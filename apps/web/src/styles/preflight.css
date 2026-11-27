@@ -1,0 +1,220 @@
+/*
+ * Base layer: the original site's reset (instead of Tailwind's preflight), root font size and the design tokens.
+ * Everything visual is done with Tailwind utilities in the components — see tailwind.css for the theme.
+ */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+:after,
+:before {
+  box-sizing: inherit;
+}
+blockquote,
+body,
+dd,
+dl,
+dt,
+fieldset,
+figure,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+hr,
+html,
+iframe,
+legend,
+li,
+ol,
+p,
+pre,
+ul {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+html {
+  line-height: 1;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: auto;
+}
+body,
+html {
+  margin: 0;
+  padding: 0;
+}
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+body,
+html {
+  min-height: 100%;
+  width: 100%;
+}
+progress {
+  vertical-align: middle;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: 1em;
+  font-weight: 400;
+}
+b,
+strong {
+  display: inline-block;
+  font-weight: 700;
+}
+a,
+a:visited {
+  color: inherit;
+  -webkit-text-decoration: none;
+  text-decoration: none;
+}
+a[href],
+button {
+  touch-action: manipulation;
+}
+blockquote,
+q {
+  font-style: italic;
+}
+blockquote:after,
+blockquote:before,
+q:after,
+q:before {
+  content: "";
+}
+ul {
+  list-style: none;
+}
+em,
+i {
+  font-style: normal;
+}
+audio,
+canvas,
+iframe,
+img,
+svg,
+video {
+  display: block;
+  height: auto;
+  max-width: 100%;
+  width: 100%;
+}
+button,
+input,
+select,
+textarea {
+  margin: 0;
+}
+[type="button"],
+[type="reset"],
+[type="submit"],
+button {
+  all: unset;
+}
+button {
+  background-color: inherit;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+svg {
+  height: auto;
+  width: auto;
+}
+address {
+  font-style: normal;
+}
+[type="search"] {
+  -webkit-appearance: none;
+  outline-offset: -2px;
+}
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: transparent;
+}
+a {
+  color: inherit;
+  -webkit-text-decoration: none;
+  text-decoration: none;
+}
+
+/* 1rem = 10px (the original design's unit). */
+html {
+  font-size: 10px;
+}
+
+/*
+ * Layout grid + colors. Responsive, and overridden at runtime by Admin → Appearance (injected <style id="theme-vars">).
+ * Tailwind utilities read them: w-col-4, gap-gutter, px-offset, bg-accent, text-secondary …
+ */
+:root {
+  --columns: 4;
+  --gutter: 2rem;
+  --width: 90vw;
+  --offset: calc((100vw - var(--width)) / 2);
+  --offset-double: calc(100vw - var(--width));
+  --gutter-half: calc(var(--gutter) / 2);
+  --gutter-double: calc(var(--gutter) * 2);
+  --height: 100svh;
+  --radius: 2rem;
+  --col: calc((var(--width) - (var(--columns) - 1) * var(--gutter)) / var(--columns));
+  --col-1: calc(var(--col) * 1 + var(--gutter) * 0);
+  --col-2: calc(var(--col) * 2 + var(--gutter) * 1);
+  --col-3: calc(var(--col) * 3 + var(--gutter) * 2);
+  --col-4: calc(var(--col) * 4 + var(--gutter) * 3);
+  --col-5: calc(var(--col) * 5 + var(--gutter) * 4);
+  --col-6: calc(var(--col) * 6 + var(--gutter) * 5);
+  --col-7: calc(var(--col) * 7 + var(--gutter) * 6);
+  --col-8: calc(var(--col) * 8 + var(--gutter) * 7);
+  --col-9: calc(var(--col) * 9 + var(--gutter) * 8);
+  --col-10: calc(var(--col) * 10 + var(--gutter) * 9);
+  --col-11: calc(var(--col) * 11 + var(--gutter) * 10);
+  --col-12: calc(var(--col) * 12 + var(--gutter) * 11);
+  --ff-base: "oswald-600", Helvetica, sans-serif;
+  --ff-regular: "oswald-300", Helvetica, sans-serif;
+}
+@media screen and (min-width: 960px) {
+  :root {
+    --columns: 8;
+    --gutter: 2rem;
+    --width: 95vw;
+  }
+}
+@media screen and (min-width: 1280px) {
+  :root {
+    --columns: 12;
+    --gutter: max(2rem, min(2vw, 4rem));
+    --width: 96vw;
+  }
+}
+:root {
+  --c-bg: #fbf5e7;
+  --c-text-alt: #fbf5e7;
+  --c-accent: #d70321;
+  --c-secondary: #cba058;
+  --c-accent-dark: #9f0005;
+  --text-color: var(--c-accent);
+  /* Link colors (Admin → Appearance → Colors: Footer links / Top navigation / Menu links); the theme always sets them. */
+  --c-footer-links: var(--c-secondary);
+  --c-nav-links: var(--c-secondary);
+  --c-menu-links: var(--c-secondary);
+}
+
+/* Elements with a custom-cursor label hide the system cursor (desktop custom cursor, see CustomCursor.tsx). */
+[data-cursor-text] {
+  cursor: none !important;
+}

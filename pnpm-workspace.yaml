@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Packages allowed to run install scripts (native binaries / generators).
+allowBuilds:
+  '@prisma/engines': true
+  '@prisma/client': true
+  prisma: true
+  esbuild: true
+  sharp: true
+  '@tailwindcss/oxide': true
+  unrs-resolver: true

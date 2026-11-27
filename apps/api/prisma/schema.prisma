@@ -1,0 +1,548 @@
+// PostgreSQL schema — content (CMS + translations), media, commerce (markets, orders, payments),
+// reservations, admin auth (Better Auth) and audit trail.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/* ─────────────────────────── Auth (Better Auth) ─────────────────────────── */
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  /// admin | editor | staff
+  role          String?   @default("staff")
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
+  /// Set by Better Auth's two-factor plugin once the first TOTP code is verified.
+  twoFactorEnabled Boolean? @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  twoFactors    TwoFactor[]
+
+  @@map("user")
+}
+
+/// Authenticator-app (TOTP) secret and backup codes, both encrypted with BETTER_AUTH_SECRET.
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+/* ─────────────────────────── Languages & settings ─────────────────────────── */
+
+model Locale {
+  /// BCP 47 code, e.g. "en", "es", "bn", "pt-BR"
+  code         String               @id
+  name         String
+  nativeName   String
+  dir          String               @default("ltr")
+  enabled      Boolean              @default(true)
+  isDefault    Boolean              @default(false)
+  sortOrder    Int                  @default(0)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  translations ContentTranslation[]
+
+  @@map("locale")
+}
+
+/// Key/value JSON settings: site, theme, features, commerce, notifications.
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("setting")
+}
+
+/* ─────────────────────────── Content ─────────────────────────── */
+
+enum EntryStatus {
+  draft
+  published
+}
+
+model ContentEntry {
+  id           String               @id @default(cuid())
+  /// Content type key, e.g. "home", "product", "legal"
+  type         String
+  /// Collections: URL slug. Singletons: "singleton".
+  slug         String
+  status       EntryStatus          @default(published)
+  sortOrder    Int                  @default(0)
+  /// Values shared by every language (images, colors, flags, list structure)
+  data         Json                 @default("{}")
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  updatedById  String?
+  translations ContentTranslation[]
+  revisions    ContentRevision[]
+  commerce     ProductCommerce?
+  prices       ProductPrice[]
+  orderItems   OrderItem[]
+
+  @@unique([type, slug])
+  @@index([type, status, sortOrder])
+  @@map("content_entry")
+}
+
+model ContentTranslation {
+  entryId   String
+  locale    String
+  /// Localized values for this language
+  data      Json         @default("{}")
+  updatedAt DateTime     @updatedAt
+  entry     ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  language  Locale       @relation(fields: [locale], references: [code], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([entryId, locale])
+  @@index([locale])
+  @@map("content_translation")
+}
+
+/// Snapshot taken before every save — allows reviewing and restoring older versions.
+model ContentRevision {
+  id        String       @id @default(cuid())
+  entryId   String
+  snapshot  Json
+  authorId  String?
+  author    String?
+  createdAt DateTime     @default(now())
+  entry     ContentEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId, createdAt])
+  @@map("content_revision")
+}
+
+model Media {
+  id          String   @id @default(cuid())
+  /// Storage-relative key, e.g. "cms/home-hero.jpg"
+  storageKey  String   @unique
+  /// Public URL (relative "/uploads/…" for local storage, absolute for S3/CDN)
+  url         String
+  filename    String
+  mimeType    String
+  size        Int
+  width       Int?
+  height      Int?
+  alt         String?
+  folder      String   @default("")
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@index([folder, createdAt])
+  @@map("media")
+}
+
+/* ─────────────────────────── Commerce ─────────────────────────── */
+
+model Market {
+  id                    String         @id @default(cuid())
+  code                  String         @unique
+  name                  String
+  enabled               Boolean        @default(true)
+  currency              String         @db.Char(3)
+  /// ISO 3166-1 alpha-2
+  countries             String[]
+  isDefault             Boolean        @default(false)
+  isFallback            Boolean        @default(false)
+  exchangeRate          Float          @default(1)
+  /// none | whole | x99
+  rounding              String         @default("none")
+  taxRate               Float          @default(0)
+  taxInclusive          Boolean        @default(true)
+  taxLabel              String         @default("Tax")
+  deliveryEnabled       Boolean        @default(true)
+  pickupEnabled         Boolean        @default(false)
+  /// Minor units
+  shippingFee           Int            @default(0)
+  freeShippingThreshold Int?
+  minOrderAmount        Int?
+  codEnabled            Boolean        @default(false)
+  codFee                Int            @default(0)
+  codMaxAmount          Int?
+  /// stripe | razorpay | sslcommerz
+  paymentProviders      String[]
+  sortOrder             Int            @default(0)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  prices                ProductPrice[]
+  orders                Order[]
+
+  @@map("market")
+}
+
+model ProductCommerce {
+  productId   String       @id
+  sku         String?      @unique
+  orderable   Boolean      @default(true)
+  trackStock  Boolean      @default(false)
+  stock       Int          @default(0)
+  maxPerOrder Int          @default(24)
+  updatedAt   DateTime     @updatedAt
+  product     ContentEntry @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_commerce")
+}
+
+model ProductPrice {
+  productId       String
+  marketId        String
+  /// Minor units of the market currency
+  amount          Int
+  compareAtAmount Int?
+  product         ContentEntry @relation(fields: [productId], references: [id], onDelete: Cascade)
+  market          Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@id([productId, marketId])
+  @@map("product_price")
+}
+
+model Location {
+  id                  String        @id @default(cuid())
+  slug                String        @unique
+  name                String
+  addressLine1        String
+  addressLine2        String?
+  city                String
+  region              String?
+  postalCode          String?
+  country             String        @db.Char(2)
+  phone               String?
+  email               String?
+  /// IANA time zone, e.g. "Europe/Madrid", "Asia/Dhaka"
+  timezone            String
+  latitude            Float?
+  longitude           Float?
+  isActive            Boolean       @default(true)
+  acceptsReservations Boolean       @default(true)
+  acceptsPickup       Boolean       @default(false)
+  /// { "0": [{ "open": "12:00", "close": "16:00" }], … } — 0 = Sunday
+  openingHours        Json          @default("{}")
+  /// Minutes between bookable start times
+  slotInterval        Int           @default(30)
+  /// How long a table is held (minutes)
+  reservationDuration Int           @default(90)
+  /// Max guests seated at the same time
+  maxCovers           Int           @default(40)
+  minPartySize        Int           @default(1)
+  maxPartySize        Int           @default(12)
+  leadTimeMinutes     Int           @default(60)
+  maxAdvanceDays      Int           @default(60)
+  autoConfirm         Boolean       @default(false)
+  /// ISO dates (YYYY-MM-DD) when the location is closed
+  closedDates         String[]
+  sortOrder           Int           @default(0)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  reservations        Reservation[]
+  orders              Order[]
+
+  @@map("location")
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  preparing
+  ready
+  shipped
+  delivered
+  completed
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  unpaid
+  pending
+  paid
+  failed
+  refunded
+  partially_refunded
+}
+
+model Order {
+  id               String        @id @default(cuid())
+  number           String        @unique
+  /// Secret for guest tracking links
+  token            String        @unique
+  status           OrderStatus   @default(pending)
+  paymentStatus    PaymentStatus @default(unpaid)
+  /// cod | stripe | razorpay | sslcommerz
+  paymentMethod    String
+  paymentRef       String?
+  /// delivery | pickup
+  fulfillment      String
+  marketId         String
+  market           Market        @relation(fields: [marketId], references: [id])
+  country          String        @db.Char(2)
+  currency         String        @db.Char(3)
+  locale           String
+  customerName     String
+  /// E.164
+  customerPhone    String
+  customerEmail    String?
+  addressLine1     String?
+  addressLine2     String?
+  city             String?
+  region           String?
+  postalCode       String?
+  addressCountry   String?       @db.Char(2)
+  pickupLocationId String?
+  pickupLocation   Location?     @relation(fields: [pickupLocationId], references: [id], onDelete: SetNull)
+  notes            String?
+  internalNote     String?
+  subtotal         Int
+  shipping         Int
+  codFee           Int
+  tax              Int
+  taxInclusive     Boolean
+  total            Int
+  idempotencyKey   String?       @unique
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  paidAt           DateTime?
+  cancelledAt      DateTime?
+  /// Personal data removed (retention period or the customer's request); totals and items are kept
+  anonymizedAt     DateTime?
+  completedAt      DateTime?
+  items            OrderItem[]
+  events           OrderEvent[]
+  payments         Payment[]
+
+  @@index([status, createdAt])
+  @@index([paymentStatus])
+  @@index([customerPhone])
+  @@index([createdAt])
+  @@map("order")
+}
+
+model OrderItem {
+  id        String        @id @default(cuid())
+  orderId   String
+  order     Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String?
+  product   ContentEntry? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  sku       String?
+  /// Snapshots at time of purchase
+  name      String
+  image     String?
+  unitPrice Int
+  quantity  Int
+  lineTotal Int
+
+  @@index([orderId])
+  @@map("order_item")
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// created | status | payment | note | notification
+  type      String
+  fromValue String?
+  toValue   String?
+  message   String?
+  actorId   String?
+  actorName String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
+  @@map("order_event")
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider    String
+  providerRef String?
+  amount      Int
+  currency    String   @db.Char(3)
+  /// pending | succeeded | failed | refunded
+  status      String
+  raw         Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([provider, providerRef])
+  @@index([orderId])
+  @@map("payment")
+}
+
+/// Processed webhook ids — makes provider retries idempotent.
+model WebhookEvent {
+  id          String    @id
+  provider    String
+  type        String
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@map("webhook_event")
+}
+
+/* ─────────────────────────── Reservations ─────────────────────────── */
+
+enum ReservationStatus {
+  pending
+  confirmed
+  seated
+  completed
+  cancelled
+  no_show
+}
+
+model Reservation {
+  id             String             @id @default(cuid())
+  code           String             @unique
+  token          String             @unique
+  locationId     String
+  location       Location           @relation(fields: [locationId], references: [id])
+  status         ReservationStatus  @default(pending)
+  /// Local date / time at the location
+  date           String
+  time           String
+  startsAt       DateTime
+  endsAt         DateTime
+  partySize      Int
+  name           String
+  phone          String
+  email          String?
+  notes          String?
+  internalNote   String?
+  locale         String
+  /// web | admin | phone
+  source         String             @default("web")
+  idempotencyKey String?            @unique
+  ipAddress      String?
+  /// Personal data removed (retention period or the guest's request)
+  anonymizedAt   DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  cancelledAt    DateTime?
+  events         ReservationEvent[]
+
+  @@index([locationId, date])
+  @@index([status, startsAt])
+  @@index([phone, startsAt])
+  @@map("reservation")
+}
+
+model ReservationEvent {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  type          String
+  fromValue     String?
+  toValue       String?
+  message       String?
+  actorId       String?
+  actorName     String?
+  createdAt     DateTime    @default(now())
+
+  @@index([reservationId, createdAt])
+  @@map("reservation_event")
+}
+
+/* ─────────────────────────── System ─────────────────────────── */
+
+/// Atomic sequences (order numbers, reservation codes).
+model Counter {
+  key   String @id
+  value Int
+
+  @@map("counter")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String
+  entityType String
+  entityId   String?
+  data       Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_log")
+}

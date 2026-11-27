@@ -1,0 +1,135 @@
+/*
+ * Tailwind CSS for the public website.
+ *
+ * Tailwind's own reset ("preflight") is NOT used: the original site's reset lives in `base` (see preflight.css),
+ * so the design is pixel-identical to the original.
+ *
+ * Units: the root font-size is 10px (original design), so 1rem = 10px and the spacing unit is 1px:
+ *   p-20 = 2rem = 20px,  gap-40 = 4rem,  mb-15 = 1.5rem.
+ * Breakpoints (original design):  max-md: < 960px (phone)  ·  md: ≥ 960px (tablet)  ·  lg: ≥ 1280px (desktop)  ·  xl: ≥ 1920px
+ * Colors / fonts come from Admin → Appearance (CSS variables injected in <head>), so utilities reference those variables.
+ */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import './preflight.css' layer(base);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* The layout container is <Container> (w-width, centered) — Tailwind's breakpoint-based `container` is not used. */
+@source not inline("container");
+
+@theme {
+  --*: initial;
+
+  --spacing: 0.1rem;
+
+  --breakpoint-md: 960px;
+  --breakpoint-lg: 1280px;
+  --breakpoint-xl: 1920px;
+
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Large seal: rotating ring of text */
+  --animate-seal: rotate 10s linear infinite;
+  @keyframes rotate {
+    0% {
+      transform: rotate(0);
+    }
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* Product card: vertical text marquee */
+  --animate-marquee: marquee 8s linear infinite;
+  @keyframes marquee {
+    0% {
+      transform: translateZ(0);
+    }
+    to {
+      transform: translate3d(0, -50%, 0);
+    }
+  }
+}
+
+/* Easing curves of the original motion design — `ease-expo` utility, or var(--ease-expo) inside transitions. */
+@theme static {
+  --ease-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-in-out-expo: cubic-bezier(1, 0, 0, 1);
+}
+
+/* Values that follow the admin theme / responsive root variables (resolved at use time). */
+@theme inline {
+  --font-base: var(--ff-base);
+  --font-regular: var(--ff-regular);
+
+  --color-bg: var(--c-bg);
+  --color-alt: var(--c-text-alt);
+  --color-accent: var(--c-accent);
+  --color-secondary: var(--c-secondary);
+  --color-accent-dark: var(--c-accent-dark);
+  --color-footer-links: var(--c-footer-links);
+  --color-nav-links: var(--c-nav-links);
+  --color-menu-links: var(--c-menu-links);
+
+  /* Fluid type scale: text-340 … text-20 (font-size + line-height) */
+  --text-340: max(7rem, min(17vw, 34rem));
+  --text-340--line-height: 85%;
+  --text-300: max(8rem, min(15vw, 30rem));
+  --text-300--line-height: 85%;
+  --text-260: max(7rem, min(13vw, 26rem));
+  --text-260--line-height: 85%;
+  --text-240: max(10rem, min(10vw, 24rem));
+  --text-240--line-height: 85%;
+  --text-110: max(6rem, min(6vw, 11rem));
+  --text-110--line-height: 90%;
+  --text-90: max(5rem, min(5vw, 9rem));
+  --text-90--line-height: 90%;
+  --text-35: max(2rem, min(2vw, 3.5rem));
+  --text-35--line-height: 100%;
+  --text-24: max(1.6rem, min(1.6vw, 2.4rem));
+  --text-24--line-height: 100%;
+  --text-20: max(1.6rem, min(1.8vw, 2rem));
+  --text-20--line-height: 100%;
+  --text-base: max(2rem, min(2vw, 3rem));
+  --text-base--line-height: 100%;
+
+  /* Fluid vertical rhythm: mb-fluid-40, pb-fluid-120, gap-fluid-20 … */
+  --spacing-fluid-200: max(10rem, min(10vw, 20rem));
+  --spacing-fluid-160: max(8rem, min(8vw, 16rem));
+  --spacing-fluid-120: max(6rem, min(6vw, 12rem));
+  --spacing-fluid-100: max(5rem, min(5vw, 10rem));
+  --spacing-fluid-80: max(4rem, min(4vw, 8rem));
+  --spacing-fluid-60: max(3rem, min(3vw, 6rem));
+  --spacing-fluid-40: max(2.4rem, min(2.4vw, 4rem));
+  --spacing-fluid-20: max(1.5rem, min(1.5vw, 20rem));
+  --spacing-fluid-14: max(1rem, min(1vw, 1.4rem));
+
+  /* Layout grid (4 / 8 / 12 columns): w-col-4, ml-col-1, gap-gutter, px-offset, w-width … */
+  --spacing-gutter: var(--gutter);
+  --spacing-gutter-half: var(--gutter-half);
+  --spacing-gutter-double: var(--gutter-double);
+  --spacing-offset: var(--offset);
+  --spacing-offset-double: var(--offset-double);
+  --spacing-width: var(--width);
+  --spacing-col: var(--col);
+  --spacing-col-1: var(--col-1);
+  --spacing-col-2: var(--col-2);
+  --spacing-col-3: var(--col-3);
+  --spacing-col-4: var(--col-4);
+  --spacing-col-5: var(--col-5);
+  --spacing-col-6: var(--col-6);
+  --spacing-col-7: var(--col-7);
+  --spacing-col-8: var(--col-8);
+  --spacing-col-9: var(--col-9);
+  --spacing-col-10: var(--col-10);
+  --spacing-col-11: var(--col-11);
+  --spacing-col-12: var(--col-12);
+}
+
+/* The original applies :hover on every device (also touch) — keep that instead of Tailwind's hover-capable-only default. */
+@custom-variant hover (&:hover);
+
+/* Runtime state class added by lib/observer.ts when an element scrolls into view. */
+@custom-variant inview (&.is-inview);

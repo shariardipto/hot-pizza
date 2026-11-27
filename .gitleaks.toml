@@ -1,0 +1,7 @@
+# Secret scan settings (used by the CI "Secret scan" job). Default gitleaks rules plus known false positives.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Original site content export: Prismic document link keys are UUIDs, not credentials."
+paths = ['''apps/api/prisma/seed/data/documents\.json''']

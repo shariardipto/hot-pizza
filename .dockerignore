@@ -1,0 +1,25 @@
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/*.tsbuildinfo
+**/next-env.d.ts
+.git
+.github
+.vscode
+coverage
+
+# build recipes and docs: changing them should not invalidate the build cache
+Dockerfile
+.dockerignore
+docker-compose*.yml
+**/*.md
+*.log
+
+# secrets and local data never go into an image
+.env
+.env.*
+!.env.example
+apps/api/storage/uploads/*
+apps/api/storage/cache/*
+apps/api/src/generated

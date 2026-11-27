@@ -1,0 +1,30 @@
+{
+  "name": "@app/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./content": "./src/content/index.ts",
+    "./commerce": "./src/commerce/index.ts",
+    "./schemas": "./src/schemas/index.ts",
+    "./api": "./src/api/index.ts",
+    "./i18n": "./src/i18n/index.ts",
+    "./theme": "./src/theme.ts",
+    "./security": "./src/security.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "libphonenumber-js": "1.13.15",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12"
+  }
+}

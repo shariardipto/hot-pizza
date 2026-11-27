@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-brand: #d70321;
+  --color-brand-dark: #9f0005;
+  --color-gold: #cba058;
+  --color-cream: #fbf5e7;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-zinc-50 text-zinc-900 antialiased;
+  }
+  ::selection {
+    background: var(--color-gold);
+    color: #fff;
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-xs outline-none transition placeholder:text-zinc-400 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-zinc-100 disabled:text-zinc-500;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-zinc-500;
+  }
+  .card {
+    /* min-w-0: inside grids/flex rows a card may shrink below its content width (tables scroll inside it) */
+    @apply min-w-0 rounded-xl border border-zinc-200 bg-white shadow-xs;
+  }
+  .tiptap {
+    @apply min-h-48 px-3 py-2 text-sm outline-none;
+  }
+  .tiptap p {
+    @apply mb-2;
+  }
+  .tiptap h2 {
+    @apply mt-3 mb-2 text-lg font-semibold;
+  }
+  .tiptap h3 {
+    @apply mt-3 mb-2 font-semibold;
+  }
+  .tiptap ul {
+    @apply mb-2 list-disc pl-5;
+  }
+  .tiptap ol {
+    @apply mb-2 list-decimal pl-5;
+  }
+  .tiptap a {
+    @apply text-brand underline;
+  }
+}

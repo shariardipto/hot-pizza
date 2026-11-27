@@ -1,0 +1,101 @@
+# Production stack: PostgreSQL + API + website + dashboard (+ optional Redis).
+#
+#   cp .env.example .env.production      # fill in secrets and your public https URLs
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# The apps listen on 127.0.0.1 only: put a reverse proxy with TLS in front (Caddy, nginx, Traefik…):
+#   www.example.com   → 127.0.0.1:3000   (website; /uploads and /api/v1 are proxied to the API by the website)
+#   admin.example.com → 127.0.0.1:3001   (dashboard)
+#   api.example.com   → 127.0.0.1:4000   (payment webhooks / return URLs: set API_URL to this public URL)
+# Behind a proxy set TRUST_PROXY=1 so rate limits see the visitor's IP.
+name: resturant-app-prod
+
+x-app: &app
+  env_file: .env.production
+  restart: unless-stopped
+  environment: &app-env
+    NODE_ENV: production
+    DATABASE_URL: postgresql://app:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}@postgres:5432/resturant_app
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+      POSTGRES_DB: resturant_app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d resturant_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Migrations, then the first-time content seed (skips content that already exists). Exits when done.
+  migrate:
+    <<: *app
+    build: { context: ., target: migrate }
+    restart: "no"
+    environment:
+      <<: *app-env
+      STORAGE_DIR: /data/storage
+    volumes:
+      - uploads:/data/storage
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *app
+    build: { context: ., target: api }
+    environment:
+      <<: *app-env
+      STORAGE_DIR: /data/storage
+    volumes:
+      - uploads:/data/storage
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    <<: *app
+    build:
+      context: .
+      target: web
+      args:
+        API_URL: http://api:4000
+    environment:
+      <<: *app-env
+      API_URL: http://api:4000
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api: { condition: service_healthy }
+
+  admin:
+    <<: *app
+    build:
+      context: .
+      target: admin
+      args:
+        API_URL: http://api:4000
+        NEXT_PUBLIC_WEB_URL: ${WEB_URL:?set WEB_URL in .env.production}
+    environment:
+      <<: *app-env
+      API_URL: http://api:4000
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      api: { condition: service_healthy }
+
+  # Only needed when you run several API containers: set REDIS_URL=redis://redis:6379 and start with --profile scale.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    profiles: ["scale"]
+
+volumes:
+  pgdata:
+  uploads:

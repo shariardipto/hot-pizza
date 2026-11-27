@@ -1,0 +1,31 @@
+{
+  "name": "resturant-app",
+  "private": true,
+  "description": "Animated brand site + headless CMS, guest ordering and reservations (Next.js, Express, Better Auth, PostgreSQL).",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel --env-mode=loose",
+    "dev:web": "turbo run dev --filter=@app/web --filter=@app/api --env-mode=loose",
+    "dev:admin": "turbo run dev --filter=@app/admin --filter=@app/api --env-mode=loose",
+    "build": "turbo run build",
+    "start": "turbo run start --parallel --env-mode=loose",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:migrate": "pnpm --filter @app/api db:migrate",
+    "db:deploy": "pnpm --filter @app/api db:deploy",
+    "db:seed": "pnpm --filter @app/api db:seed",
+    "db:studio": "pnpm --filter @app/api db:studio",
+    "setup": "pnpm install && pnpm db:up && pnpm db:deploy && pnpm db:seed"
+  },
+  "devDependencies": {
+    "prettier": "3.3.3",
+    "turbo": "2.11.10",
+    "typescript": "5.9.3"
+  }
+}
